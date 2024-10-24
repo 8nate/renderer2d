@@ -1,6 +1,10 @@
 #ifndef RENDER2D_H
 #define RENDER2D_H
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include "typedefs.h"
 #include "fsmath.h"
 
@@ -14,6 +18,9 @@ struct Vertex {
     float coord[3];
   };
   float texcoord[2];
+
+  Vertex() = default;
+  Vertex(float p_x, float p_y, float p_z, float p_tex_u, float p_tex_v);
 };
 
 class Texture;
@@ -24,7 +31,7 @@ class Render2D {
     uint_t shader;
     uint_t texture;
 
-    Matrix mvp;
+    glm::mat4 mvp;
 
     // Vertex buffer
     Vertex *vertices;
@@ -38,9 +45,9 @@ public:
     void set_projection_matrix(float p_left, float p_right, float p_bottom, float p_top,
                                float p_znear, float p_zfar);
 
-    void set_mvp(Matrix p_mvp);
+    void set_mvp(const glm::mat4 &p_mvp);
 
-    void push_vertex(float p_x, float p_y);
+    void push_vertex(float p_x, float p_y, float p_tex_x, float p_tex_y);
     void draw_buffer();
 
 public:

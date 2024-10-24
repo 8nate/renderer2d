@@ -30,6 +30,14 @@ static const char *frag_shader_src = \
 "}\n";
 
 
+Vertex::Vertex(float p_x, float p_y, float p_z, float p_tex_u, float p_tex_v) {
+    x = p_x;
+    y = p_y;
+    z = p_z;
+    texcoord[0] = p_tex_u;
+    texcoord[1] = p_tex_v;
+}
+
 static uint_t compile_shader(const char **p_source, GLenum p_shader_type) {
     int success;
     char error_log[512];
@@ -81,33 +89,39 @@ Render2D::Render2D(int p_vertex_limit) : vertex_limit(p_vertex_limit) {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, texcoord));
 }
 
-void Render2D::set_mvp(Matrix p_mvp) {
+void Render2D::set_mvp(const glm::mat4 &p_mvp) {
     mvp = p_mvp;
 }
 
-void Render2D::push_vertex(float p_x, float p_y) {
+void Render2D::push_vertex(float p_x, float p_y, float p_tex_x, float p_tex_y) {
     if (vertex_count >= vertex_limit) {
         draw_buffer();
     }
 
-    vertices[vertex_count++] = { {p_x, p_y, 1.0f} };
+    vertices[vertex_count++] = Vertex(p_x, p_y, 1.0f, p_tex_x, p_tex_y);
 }
 
 void Render2D::draw_buffer() {
     glUseProgram(shader);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    if (texture) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glUniform1i(glGetUniformLocation(shader, "u_texture"), 0);
+    }
 
-    glUniform1i(glGetUniformLocation(shader, "u_texture"), 0);
-    glUniformMatrix4fv(glGetUniformLocation(shader, "u_mvp"), 1, GL_FALSE, &mvp.cols[0][0]);
+    glUniformMatrix4fv(glGetUniformLocation(shader, "u_mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertex) * vertex_count, vertices);
 
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLES, 0, vertex_count);
-    
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     vertex_count = 0;
 }
 
@@ -116,22 +130,26 @@ void Render2D::draw_quad(float p_x, float p_y, float p_base, float p_height, Tex
     float offx = p_base / 2;
     float offy = p_height / 2;
 
-    if (p_texture != nullptr) {
-        if (p_texture->id != texture) {
+    if (p_texture == nullptr) {
+        if (texture != 0)
             draw_buffer();
-            texture = p_texture->id;
-        }
+        texture = 0;
+    }
+
+    else if (p_texture->id != texture) {
+        draw_buffer();
+        texture = p_texture->id;
     }
 
     // First triangle
-    push_vertex(p_x - offx, p_y - offy); // bottom left
-    push_vertex(p_x - offx, p_y + offy); // top left
-    push_vertex(p_x + offx, p_y + offy); // top right
+    push_vertex(p_x - offx, p_y - offy, 0.0, 0.0); // bottom left
+    push_vertex(p_x - offx, p_y + offy, 0.0, 1.0); // top left
+    push_vertex(p_x + offx, p_y + offy, 1.0, 1.0); // top right
 
     // Second triangle
-    push_vertex(p_x + offx, p_y + offy); // top right
-    push_vertex(p_x + offx, p_y - offy); // bottom right
-    push_vertex(p_x - offx, p_y - offy); // bottom left
+    push_vertex(p_x + offx, p_y + offy, 1.0, 1.0); // top right
+    push_vertex(p_x + offx, p_y - offy, 1.0, 0.0); // bottom right
+    push_vertex(p_x - offx, p_y - offy, 0.0, 0.0); // bottom left
 }
 
 

@@ -11,7 +11,7 @@ public:
     int height;
 
 public:
-    static Texture load(const char *p_filename);
+    static Texture load(const char *p_filename, bool p_use_mipmaps = true);
 };
 
 #endif // TEXTURE_H
