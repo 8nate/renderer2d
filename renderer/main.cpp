@@ -23,30 +23,28 @@ struct Vector2 {
 
 Vector2 camera_offset;
 
-void _win_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-  if (action != GLFW_PRESS) {
-    return;
-  }
-  
-  const float CAMERA_SPEED = 20.0f;
+static bool move_up;
+static bool move_down;
+static bool move_left;
+static bool move_right;
 
-  switch (key) {
-    case GLFW_KEY_W: {
-      camera_offset.y += CAMERA_SPEED;
-      break;
-    }
-    case GLFW_KEY_S: {
-      camera_offset.y -= CAMERA_SPEED;
-      break;
-    }
-    case GLFW_KEY_A: {
-      camera_offset.x += CAMERA_SPEED;
-      break;
-    }
-    case GLFW_KEY_D: {
-      camera_offset.x -= CAMERA_SPEED;
-      break;
-    }
+static const float camera_speed = 3.0f;
+
+void _win_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+  if (key == GLFW_KEY_W) {
+    move_up = action;
+  }
+
+  if (key == GLFW_KEY_S) {
+    move_down = action;
+  }
+
+  if (key == GLFW_KEY_A) {
+    move_left = action;
+  }
+
+  if (key == GLFW_KEY_D) {
+    move_right = action;
   }
 }
 
@@ -71,23 +69,40 @@ int main(void) {
   }
 
   glfwSetKeyCallback(window, _win_key_callback);
+  glfwSwapInterval(1);
 
   Render2D renderer(6000);
 
   int width;
   int height;
 
-  glm::mat4 model = glm::mat4(1.0f);
   glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f));
   glm::mat4 projection = glm::ortho(0.0f, 640.0f, 480.0f, 1.0f);
-  glm::mat4 mvp = projection * view * model;
 
   Texture ak5 = Texture::load("assets/ak5.png");
   Texture ak47 = Texture::load("assets/ak47.png");
   Texture awm = Texture::load("assets/awm.png");
   Texture m16 = Texture::load("assets/m16.png");
 
+  Transform t;
+  t.position = glm::vec3(320.0f, 300.0f, 0.0f);
+  t.scale = glm::vec2(1.0f);
+
+  float r = 0.0f;
+
+  int fc;
+  double last_time = glfwGetTime();
+
   while (!glfwWindowShouldClose(window)) {
+    fc++;
+
+    double time = glfwGetTime();
+    if (time - last_time >= 1.0) {
+      printf("\rFPS: %d", fc);
+      fc = 0;
+      last_time = time;
+    }
+
     glfwGetWindowSize(window, &width, &height);
 
     glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
@@ -97,14 +112,23 @@ int main(void) {
 
     view = glm::translate(glm::mat4(1.0f), glm::vec3(camera_offset.x, camera_offset.y, 0.0f));
     projection = glm::ortho(0.0f, (float)width, (float)height, 1.0f);
-    mvp = projection * view * model;
 
-    renderer.set_mvp(mvp);
+    renderer.set_view_projection(projection * view);
 
-    renderer.draw_quad(200, 50, 200, 200, &ak5);
-    renderer.draw_quad(100, 240, 200, 200, &ak47);
-    renderer.draw_quad(300, 90, 200, 200, &awm);
-    renderer.draw_quad(350, 70, 200, 200, &m16);
+    renderer.draw_quad(glm::vec3(200, 50, 0.0f), &ak5, glm::vec2(0.3125, 0.3125));
+    renderer.draw_quad(glm::vec3(250, 50, 0.0f), &ak47, glm::vec2(0.3125, 0.3125));
+    renderer.draw_quad(glm::vec3(300, 50, 0.0f), &awm, glm::vec2(0.3125, 0.3125));
+    renderer.draw_quad(glm::vec3(350, 50, 0.0f), &m16, glm::vec2(0.3125, 0.3125));
+
+    camera_offset.x += (move_left - move_right) * camera_speed;
+    camera_offset.y += (move_up - move_down) * camera_speed;
+
+    r += 0.005;
+
+    // renderer.draw_quad(200, 50, 200, 200, &ak5);
+    // renderer.draw_quad(100, 240, 200, 200, &ak47);
+    // renderer.draw_quad(300, 90, 200, 200, &awm);
+    // renderer.draw_quad(350, 70, 200, 200, &m16);
 
     renderer.draw_buffer();
 
